@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IVL战队经理 v3.97｜解约优化+21周赛季</title>
+<style>
+*{box-sizing:border-box;font-family:"Microsoft Yahei",sans-serif;margin:0;padding:0;}
+body{background:#1a1d24;color:#eee;padding:12px;line-height:1.6;max-width:1400px;margin:0 auto;}
+h1,h2,h3{color:#ffd066;margin:10px 0;}
+.container{display:grid;grid-template-columns:300px 1fr;gap:14px;}
+.sidebar{background:#272b33;padding:14px;border-radius:8px;}
+.main{background:#272b33;padding:16px;border-radius:8px;min-height:620px;}
+.btn{background:#3b73d9;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;margin:2px;font-size:13px;}
+.btn:hover{background:#5086e8;}
+.btn-danger{background:#c23b3b;}
+.btn-danger:hover{background:#dd4c4c;}
+.btn-success{background:#289953;}
+.btn-success:hover{background:#32b865;}
+.btn-warning{background:#c48820;}
+.btn-warning:hover{background:#dd9c2c;}
+.btn-toggle{background:#555b68;}
+.btn-toggle.active{background:#229977;}
+.card{background:#333842;padding:10px;border-radius:6px;margin:8px 0;border:1px solid #444;}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:5px 0;}
+.tag{padding:2px 6px;border-radius:3px;font-size:11px;margin:2px;}
+.tag-S{background:#ffbc00;color:#000;}
+.tag-A{background:#ff7b25;color:#fff;}
+.tag-B{background:#3994ff;color:#fff;}
+.tag-C{background:#42c970;color:#000;}
+.tag-D{background:#888888;color:#fff;}
+.tag-E{background:#999999;color:#fff;}
+input,select{background:#22262c;color:#eee;border:1px solid #555;padding:6px;border-radius:4px;font-size:13px;}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;}
+th,td{border:1px solid #444;padding:7px;text-align:center;}
+th{background:#3a404c;}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.modal-box{background:#272b33;padding:20px;border-radius:8px;max-width:680px;width:92%;max-height:88vh;overflow:auto;}
+.hidden{display:none !important;}
+.tab-bar{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;}
+.tab{padding:8px 12px;background:#3a404c;cursor:pointer;border-radius:4px;}
+.tab.active{background:#3b73d9;}
+.scroll-area{max-height:440px;overflow:auto;padding-right:4px;}
+.info-text{color:#b8c2d0;font-size:12px;}
+.warn{color:#ff8888;}
+.gold{color:#ffd066;font-weight:bold;}
+.click-player{color:#73b8ff;cursor:pointer;text-decoration:underline;}
+.player-match-log{border-left:3px solid #ffd066;padding-left:8px;}
+.ai-match-log{opacity:0.75;}
+.roster-item{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
+</style>
+</head>
+<body>
+<h1>🎮 IVL战队经理 v3.97 <span class="info-text">2026 IVL夏季赛｜21周赛季</span></h1>
+<div class="container">
+<div class="sidebar">
+<div class="card">
+<h3>我的战队</h3>
+<div>资金：<span class="gold" id="myGold">0</span></div>
+<div>战队名：<span id="myTeamName"></span></div>
+<div class="row">
+<button class="btn" onclick="openCreateTeam()">新建战队</button>
+<button class="btn btn-warning" onclick="renameMyTeam()">改名</button>
+<button class="btn btn-danger" onclick="gameReset()">重置</button>
+</div>
+</div>
+<div class="card">
+<h3>阵容</h3>
+<div id="myRoster"></div>
+</div>
+<div class="card">
+<h3>导航</h3>
+<div class="row"><button class="btn" onclick="switchTab('market')">选手市场</button></div>
+<div class="row"><button class="btn" onclick="switchTab('coachLib')">教练库</button></div>
+<div class="row"><button class="btn" onclick="switchTab('createPlayer')">创建自定义</button></div>
+<div class="row"><button class="btn" onclick="switchTab('teamDetail')">战队详情</button></div>
+<div class="row"><button class="btn" onclick="switchTab('eventCenter')">赛事中心</button></div>
+<div class="row"><button class="btn" onclick="switchTab('rank')">常规赛排名</button></div>
+</div>
+</div>
+
+<div class="main">
+<div class="tab-bar">
+<div class="tab active" data-tab="market">选手市场</div>
+<div class="tab" data-tab="coachLib">教练库</div>
+<div class="tab" data-tab="createPlayer">创建自定义</div>
+<div class="tab" data-tab="teamDetail">战队详情</div>
+<div class="tab" data-tab="eventCenter">赛事中心</div>
+<div class="tab" data-tab="rank">常规赛排名</div>
+</div>
+
+<div class="tab-content" id="tab-market">
+<h2>选手市场</h2>
+<div class="row">
+<select id="sortPlayer">
+<option value="score-desc">评分降序</option>
+<option value="score-asc">评分升序</option>
+<option value="price-desc">价格降序</option>
+<option value="price-asc">价格升序</option>
+</select>
+<select id="filterRole">
+<option value="all">全部选手</option>
+<option value="hunter">监管者</option>
+<option value="survivor">求生者</option>
+</select>
+<select id="filterSurvPos" class="hidden">
+<option value="all">全部位置</option>
+<option value="rescue">救人位</option>
+<option value="ob">OB位</option>
+<option value="kiting">牵制位</option>
+<option value="support">辅助位</option>
+</select>
+<select id="filterGrade">
+<option value="all">全部等级</option>
+<option value="S">S 90‑100</option>
+<option value="A">A 80‑89</option>
+<option value="B">B 70‑79</option>
+<option value="C">C 60‑69</option>
+<option value="D">D 50‑59</option>
+<option value="E">E 40‑49</option>
+</select>
+<button id="filterAvailableBtn" class="btn btn-toggle" onclick="toggleAvailableOnly()">只看可签约</button>
+</div>
+<div class="scroll-area" id="playerMarketList"></div>
+</div>
+
+<div class="tab-content hidden" id="tab-coachLib">
+<h2>教练库</h2>
+<div class="row">
+<select id="sortCoach">
+<option value="score-desc">评分降序</option>
+<option value="score-asc">评分升序</option>
+<option value="price-desc">价格降序</option>
+<option value="price-asc">价格升序</option>
+</select>
+</div>
+<div class="scroll-area" id="coachListBox"></div>
+</div>
+
+<div class="tab-content hidden" id="tab-createPlayer">
+<h2>创建自定义</h2>
+<div class="card">
+<div class="row">
+<label>创建类型:</label>
+<select id="createTypeSel">
+<option value="player">选手</option>
+<option value="coach">教练</option>
+</select>
+</div>
+<div id="playerCreateBlock">
+<div class="row">
+<label>选手名称:</label><input type="text" id="cpName" placeholder="输入名字">
+</div>
+<div class="row">
+<label>角色类型:</label>
+<select id="cpRole">
+<option value="survivor">求生者</option>
+<option value="hunter">监管者</option>
+</select>
+</div>
+<div class="row" id="survPosRow">
+<label>求生位置:</label>
+<select id="cpSurvPos">
+<option value="rescue">救人位</option>
+<option value="ob">OB位</option>
+<option value="kiting">牵制位</option>
+<option value="support">辅助位</option>
+</select>
+</div>
+<div class="row">
+<label>等级:</label>
+<select id="cpGrade">
+<option value="S">S (90‑100)</option>
+<option value="A">A (80‑89)</option>
+<option value="B">B (70‑79)</option>
+<option value="C">C (60‑69)</option>
+<option value="D">D (50‑59)</option>
+<option value="E">E (40‑49)</option>
+</select>
+</div>
+<div class="row">
+<label>评分:</label><input type="number" id="cpScore" min="40" max="100">
+</div>
+<div class="row">
+<label>战队前缀:</label><input type="text" id="cpTeamTag" placeholder="自定义标签">
+</div>
+</div>
+<div id="coachCreateBlock" class="hidden">
+<div class="row">
+<label>教练名称:</label><input type="text" id="ccName" placeholder="输入名字">
+</div>
+<div class="row">
+<label>等级:</label>
+<select id="ccGrade">
+<option value="S">S (90‑100)</option>
+<option value="A">A (80‑89)</option>
+<option value="B">B (70‑79)</option>
+<option value="C">C (60‑69)</option>
+<option value="D">D (50‑59)</option>
+<option value="E">E (40‑49)</option>
+</select>
+</div>
+<div class="row">
+<label>评分:</label><input type="number" id="ccScore" min="40" max="100">
+</div>
+<div class="row">
+<label>战队前缀:</label><input type="text" id="ccTeamTag" placeholder="自定义标签">
+</div>
+</div>
+<div class="row">
+<button class="btn btn-success" onclick="doCreateCustom()">生成</button>
+</div>
+</div>
+<div id="cpTip" class="info-text"></div>
+</div>
+
+<div class="tab-content hidden" id="tab-teamDetail">
+<h2>全部战队详情</h2>
+<div class="scroll-area" id="allTeamDetailBox"></div>
+</div>
+
+<div class="tab-content hidden" id="tab-eventCenter">
+<h2>赛事中心｜2026 IVL夏季赛</h2>
+<div class="card">
+<div id="seasonStatusText"></div>
+<div id="dayWeekInfo"></div>
+<div class="row">
+<button class="btn" onclick="runOneRandomMatch()">执行一场模拟对局</button>
+<button class="btn btn-warning" onclick="simFullRegular()">模拟完整常规赛</button>
+<button class="btn btn-danger" onclick="clearAllMatchLog()">清除全部战报</button>
+</div>
+<div class="info-text">参赛规则：需1名监管者 + 4名求生者才可出战</div>
+</div>
+<h3>对战战报</h3>
+<div class="scroll-area" id="matchLogBox"></div>
+</div>
+
+<div class="tab-content hidden" id="tab-rank">
+<h2>常规赛积分榜</h2>
+<div id="rankTableBox"></div>
+</div>
+</div>
+</div>
+
+<div id="modalWrap" class="modal hidden">
+<div class="modal-box">
+<h3 id="modalTitle"></h3>
+<div id="modalBody"></div>
+<div class="row" style="justify-content:flex-end;margin-top:12px;">
+<button class="btn" onclick="closeModal()">确认</button>
+</div>
+</div>
+</div>
+
+<script>
+const GRADE_RULE = {
+    S:{min:90,max:100},
+    A:{min:80,max:89},
+    B:{min:70,max:79},
+    C:{min:60,max:69},
+    D:{min:50,max:59},
+    E:{min:40,max:49}
+};
+
+const BASE_TEAMS = [
+    {id:"ACT",name:"ACT",tag:"ACT"},
+    {id:"DOU5",name:"DOU5",tag:"DOU5"},
+    {id:"FPXZQ",name:"FPX.ZQ",tag:"FPX.ZQ"},
+    {id:"CDGG",name:"成都GG",tag:"成都GG"},
+    {id:"WOLVES",name:"成都Wolves",tag:"成都Wolves"},
+    {id:"Gr",name:"Gr",tag:"Gr"},
+    {id:"GW",name:"GW",tag:"GW"},
+    {id:"MRC",name:"MRC",tag:"MRC"},
+    {id:"TE",name:"TE溯",tag:"TE溯"},
+    {id:"WBG",name:"北京WBG",tag:"北京WBG"}
+];
+
+let playerDatabase = [];
+let coachDatabase = [];
+
+let gameData = {
+    myTeam:null,
+    gold:130000,
+    aiTeams:[],
+    matchLog:[],
+    season:{day:1,week:1,matchInDay:0,teamDailyCount:{}}
+};
+let filterAvailableOnly = false;
+
+function saveStorage(){
+    localStorage.setItem("ivlManagerSave_v397",JSON.stringify(gameData));
+}
+function loadStorage(){
+    const s = localStorage.getItem("ivlManagerSave_v397");
+    if(s) gameData = JSON.parse(s);
+}
+
+function toggleAvailableOnly(){
+    filterAvailableOnly = !filterAvailableOnly;
+    const btn = document.getElementById("filterAvailableBtn");
+    if(filterAvailableOnly){
+        btn.classList.add("active");
+        btn.innerText="显示全部选手";
+    }else{
+        btn.classList.remove("active");
+        btn.innerText="只看可签约";
+    }
+    renderPlayerMarket();
+}
+
+document.getElementById("sortPlayer").onchange = renderPlayerMarket;
+document.getElementById("filterRole").onchange = function(){
+    const v = this.value;
+    if(v === "survivor"){
+        document.getElementById("filterSurvPos").classList.remove("hidden");
+    }else{
+        document.getElementById("filterSurvPos").classList.add("hidden");
+    }
+    renderPlayerMarket();
+};
+document.getElementById("filterSurvPos").onchange = renderPlayerMarket;
+document.getElementById("filterGrade").onchange = renderPlayerMarket;
+document.getElementById("sortCoach").onchange = renderCoachLib;
+
+document.getElementById("createTypeSel").onchange = function(){
+    const val = this.value;
+    if(val==="player"){
+        document.getElementById("playerCreateBlock").classList.remove("hidden");
+        document.getElementById("coachCreateBlock").classList.add("hidden");
+    }else{
+        document.getElementById("playerCreateBlock").classList.add("hidden");
+        document.getElementById("coachCreateBlock").classList.remove("hidden");
+    }
+};
+
+document.getElementById("cpRole").onchange = function(){
+    const v = this.value;
+    if(v==="hunter"){
+        document.getElementById("survPosRow").classList.add("hidden");
+    }else{
+        document.getElementById("survPosRow").classList.remove("hidden");
+    }
+};
+
+function openModal(title,html){
+    document.getElementById("modalTitle").innerText = title;
+    document.getElementById("modalBody").innerText = html;
+    document.getElementById("modalWrap").classList.remove("hidden");
+}
+function closeModal(){
+    document.getElementById("modalWrap").classList.add("hidden");
+}
+
+function switchTab(tabId){
+    document.querySelectorAll(".tab-content").forEach(d=>d.classList.add("hidden"));
+    document.getElementById("tab-"+tabId).classList.remove("hidden");
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add("active");
+    renderAll();
+}
+document.querySelectorAll(".tab").forEach(t=>{
+    t.onclick=()=>switchTab(t.dataset.tab);
+});
+
+function getGradeByScore(score){
+    if(score>=GRADE_RULE.S.min) return "S";
+    if(score>=GRADE_RULE.A.min) return "A";
+    if(score>=GRADE_RULE.B.min) return "B";
+    if(score>=GRADE_RULE.C.min) return "C";
+    if(score>=GRADE_RULE.D.min) return "D";
+    return "E";
+}
+
+function calcPlayerPrice(score){
+    let base = score * 145;
+    if(score>=90) base *=1.4;
+    else if(score>=80) base *=1.2;
+    else if(score>=70) base *=1.1;
+    return Math.floor(base + Math.random()*400);
+}
+function calcCoachPrice(score){
+    let base = score *160;
+    if(score>=85) base *=1.3;
+    return Math.floor(base + Math.random()*450);
+}
+
+function initBasePlayerDB(){
+    playerDatabase = [];
+    coachDatabase = [];
+    const teamPlayerList = [
+        {name:"zz9",role:"hunter",score:87,teamTag:"ACT"},
+        {name:"moonlight",role:"hunter",score:82,teamTag:"ACT"},
+        {name:"xen",role:"survivor",survPos:"rescue",score:78,teamTag:"ACT"},
+        {name:"xy",role:"survivor",survPos:"kiting",score:75,teamTag:"ACT"},
+        {name:"Gougou",role:"survivor",survPos:"ob",score:73,teamTag:"ACT"},
+        {name:"LingYun",role:"survivor",survPos:"support",score:71,teamTag:"ACT"},
+
+        {name:"mhxm",role:"hunter",score:91,teamTag:"DOU5"},
+        {name:"suda",role:"hunter",score:84,teamTag:"DOU5"},
+        {name:"Chen",role:"survivor",survPos:"rescue",score:81,teamTag:"DOU5"},
+        {name:"unicorn",role:"survivor",survPos:"kiting",score:79,teamTag:"DOU5"},
+        {name:"Xmiao5",role:"survivor",survPos:"ob",score:76,teamTag:"DOU5"},
+        {name:"Moming",role:"survivor",survPos:"support",score:74,teamTag:"DOU5"},
+
+        {name:"DongX",role:"hunter",score:93,teamTag:"FPX.ZQ"},
+        {name:"Qx",role:"hunter",score:85,teamTag:"FPX.ZQ"},
+        {name:"SanS",role:"survivor",survPos:"rescue",score:82,teamTag:"FPX.ZQ"},
+        {name:"YiHua",role:"survivor",survPos:"ob",score:80,teamTag:"FPX.ZQ"},
+        {name:"stian",role:"survivor",survPos:"kiting",score:77,teamTag:"FPX.ZQ"},
+        {name:"lin",role:"survivor",survPos:"support",score:75,teamTag:"FPX.ZQ"},
+
+        {name:"Qiu",role:"hunter",score:88,teamTag:"成都GG"},
+        {name:"xawm",role:"hunter",score:83,teamTag:"成都GG"},
+        {name:"18",role:"survivor",survPos:"rescue",score:80,teamTag:"成都GG"},
+        {name:"ppxia",role:"survivor",survPos:"ob",score:78,teamTag:"成都GG"},
+        {name:"Kucao",role:"survivor",survPos:"kiting",score:76,teamTag:"成都GG"},
+        {name:"TKing",role:"survivor",survPos:"support",score:73,teamTag:"成都GG"},
+
+        {name:"Anx1",role:"hunter",score:88,teamTag:"成都Wolves"},
+        {name:"ChoAi",role:"hunter",score:90,teamTag:"成都Wolves"},
+        {name:"XMX",role:"survivor",survPos:"rescue",score:83,teamTag:"成都Wolves"},
+        {name:"tian",role:"survivor",survPos:"kiting",score:79,teamTag:"成都Wolves"},
+        {name:"lemon",role:"survivor",survPos:"ob",score:76,teamTag:"成都Wolves"},
+        {name:"Clover",role:"survivor",survPos:"kiting",score:77,teamTag:"成都Wolves"},
+        {name:"ShuaiMr",role:"survivor",survPos:"support",score:74,teamTag:"成都Wolves"},
+
+        {name:"Jin",role:"hunter",score:84,teamTag:"Gr"},
+        {name:"mix",role:"hunter",score:79,teamTag:"Gr"},
+        {name:"ac",role:"survivor",survPos:"rescue",score:77,teamTag:"Gr"},
+        {name:"Bye",role:"survivor",survPos:"ob",score:74,teamTag:"Gr"},
+        {name:"citie",role:"survivor",survPos:"kiting",score:72,teamTag:"Gr"},
+        {name:"heart",role:"survivor",survPos:"support",score:70,teamTag:"Gr"},
+
+        {name:"Littlie",role:"hunter",score:81,teamTag:"GW"},
+        {name:"Tear",role:"hunter",score:78,teamTag:"GW"},
+        {name:"lion",role:"survivor",survPos:"rescue",score:75,teamTag:"GW"},
+        {name:"FoxNai",role:"survivor",survPos:"ob",score:72,teamTag:"GW"},
+        {name:"winter",role:"survivor",survPos:"kiting",score:70,teamTag:"GW"},
+        {name:"XiaoCao7",role:"survivor",survPos:"support",score:68,teamTag:"GW"},
+
+        {name:"BaiLu",role:"hunter",score:86,teamTag:"MRC"},
+        {name:"Mort1s",role:"hunter",score:80,teamTag:"MRC"},
+        {name:"XiaoD",role:"survivor",survPos:"rescue",score:79,teamTag:"MRC"},
+        {name:"Nanako",role:"survivor",survPos:"ob",score:76,teamTag:"MRC"},
+        {name:"XiaoX",role:"survivor",survPos:"kiting",score:74,teamTag:"MRC"},
+        {name:"Koko",role:"survivor",survPos:"support",score:71,teamTag:"MRC"},
+
+        {name:"ppei",role:"hunter",score:83,teamTag:"TE溯"},
+        {name:"Maom",role:"survivor",survPos:"rescue",score:77,teamTag:"TE溯"},
+        {name:"Drop",role:"survivor",survPos:"ob",score:75,teamTag:"TE溯"},
+        {name:"Lconfid",role:"survivor",survPos:"kiting",score:73,teamTag:"TE溯"},
+        {name:"Gege",role:"survivor",survPos:"support",score:70,teamTag:"TE溯"},
+
+        {name:"N1e",role:"hunter",score:89,teamTag:"北京WBG"},
+        {name:"Nonsept",role:"hunter",score:82,teamTag:"北京WBG"},
+        {name:"Huiyi",role:"survivor",survPos:"rescue",score:80,teamTag:"北京WBG"},
+        {name:"Persica",role:"survivor",survPos:"ob",score:78,teamTag:"北京WBG"},
+        {name:"Guoker",role:"survivor",survPos:"kiting",score:76,teamTag:"北京WBG"},
+        {name:"Jelly",role:"survivor",survPos:"support",score:72,teamTag:"北京WBG"}
+    ];
+
+    teamPlayerList.forEach(p=>{
+        const grade = getGradeByScore(p.score);
+        playerDatabase.push({
+            id:"p_"+Math.random().toString(36).slice(2),
+            name:p.name,
+            role:p.role,
+            survPos:p.survPos||null,
+            score:p.score,
+            grade:grade,
+            price:calcPlayerPrice(p.score),
+            teamTag:p.teamTag,
+            belongTeamId:null,
+            signPrice:0
+        });
+    });
+
+    const freeSeed = [
+        {role:"hunter",score:92,survPos:null},
+        {role:"survivor",score:84,survPos:"rescue"},
+        {role:"survivor",score:76,survPos:"ob"},
+        {role:"hunter",score:71,survPos:null},
+        {role:"survivor",score:65,survPos:"kiting"},
+        {role:"survivor",score:62,survPos:"support"},
+        {role:"hunter",score:56,survPos:null},
+        {role:"survivor",score:53,survPos:"rescue"},
+        {role:"hunter",score:47,survPos:null},
+        {role:"survivor",score:44,survPos:"ob"}
+    ];
+    freeSeed.forEach((fs,idx)=>{
+        const grade = getGradeByScore(fs.score);
+        playerDatabase.push({
+            id:"p_free_"+Math.random().toString(36).slice(2),
+            name:"Free_"+(idx+1),
+            role:fs.role,
+            survPos:fs.survPos,
+            score:fs.score,
+            grade:grade,
+            price:calcPlayerPrice(fs.score),
+            teamTag:"自由",
+            belongTeamId:null,
+            signPrice:0
+        });
+    });
+
+    const coachListRaw = [
+        {name:"LZX",score:78,teamTag:"ACT"},
+        {name:"Yan",score:82,teamTag:"DOU5"},
+        {name:"ty",score:80,teamTag:"FPX.ZQ"},
+        {name:"BH",score:77,teamTag:"成都GG"},
+        {name:"superQ",score:74,teamTag:"Gr"},
+        {name:"Mitsuko",score:72,teamTag:"GW"},
+        {name:"HengH",score:76,teamTag:"MRC"},
+        {name:"M1Tao",score:73,teamTag:"TE溯"},
+        {name:"YSir",score:79,teamTag:"北京WBG"},
+        {name:"Crazy",score:81,teamTag:"成都Wolves"},
+        {name:"Free_Coach01",score:64,teamTag:"自由"}
+    ];
+    coachListRaw.forEach(c=>{
+        const grade = getGradeByScore(c.score);
+        coachDatabase.push({
+            id:"c_"+Math.random().toString(36).slice(2),
+            name:c.name,
+            score:c.score,
+            grade:grade,
+            price:calcCoachPrice(c.score),
+            teamTag:c.teamTag,
+            belongTeamId:null,
+            signPrice:0
+        });
+    });
+}
+
+function initAITeams(){
+    gameData.aiTeams = [];
+    BASE_TEAMS.forEach(t=>{
+        const teamPlayers = playerDatabase.filter(p=>p.teamTag===t.tag);
+        const teamCoach = coachDatabase.find(c=>c.teamTag===t.tag);
+        teamPlayers.forEach(x=>{
+            x.belongTeamId = t.id;
+            x.signPrice = x.price;
+        });
+        if(teamCoach){
+            teamCoach.belongTeamId = t.id;
+            teamCoach.signPrice = teamCoach.price;
+        }
+        gameData.aiTeams.push({
+            teamId:t.id,
+            name:t.name,
+            tag:t.tag,
+            players:teamPlayers.map(x=>x.id),
+            coachIds:teamCoach?[teamCoach.id]:[],
+            win:0,lose:0,netRound:0
+        });
+    });
+    gameData.season = {day:1,week:1,matchInDay:0,teamDailyCount:{}};
+}
+
+function getAllMatchableTeams(){
+    let arr = [...gameData.aiTeams];
+    if(gameData.myTeam) arr.push(gameData.myTeam);
+    return arr;
+}
+
+function checkTeamValid(teamObj){
+    const hunters = teamObj.players.filter(pid=>{
+        const p = playerDatabase.find(x=>x.id===pid);
+        return p && p.role==="hunter" && p.belongTeamId===teamObj.teamId;
+    });
+    const survivors = teamObj.players.filter(pid=>{
+        const p = playerDatabase.find(x=>x.id===pid);
+        return p && p.role==="survivor" && p.belongTeamId===teamObj.teamId;
+    });
+    return hunters.length >=1 && survivors.length >=4;
+}
+
+function openCreateTeam(){
+    const tn = prompt("输入你的战队名称：","我的IVL战队");
+    if(!tn) return;
+    gameData.myTeam = {
+        teamId:"player_team",
+        name:tn,
+        tag:tn,
+        players:[],
+        coachIds:[],
+        win:0,lose:0,netRound:0
+    };
+    gameData.gold = 130000;
+    gameData.matchLog = [];
+    gameData.season = {day:1,week:1,matchInDay:0,teamDailyCount:{}};
+    saveStorage();
+    renderAll();
+    openModal("成功","你的战队【"+tn+"】创建完成！前往选手市场签约队员。");
+}
+
+function renameMyTeam(){
+    if(!gameData.myTeam){
+        openModal("提示","请先创建你的战队");
+        return;
+    }
+    const newName = prompt("输入新战队名称：",gameData.myTeam.name);
+    if(!newName) return;
+    gameData.myTeam.name = newName;
+    gameData.myTeam.tag = newName;
+    saveStorage();
+    renderAll();
+    openModal("修改成功","战队名称已改为："+newName);
+}
+
+function gameReset(){
+    if(!confirm("确认全部重置游戏？存档将清空！")) return;
+    localStorage.removeItem("ivlManagerSave_v397");
+    initBasePlayerDB();
+    initAITeams();
+    gameData.myTeam = null;
+    gameData.gold = 130000;
+    gameData.matchLog = [];
+    saveStorage();
+    renderAll();
+    openModal("已重置","游戏全部重置，请新建你的战队。");
+}
+
+function doCreateCustom(){
+    const type = document.getElementById("createTypeSel").value;
+    document.getElementById("cpTip").innerText = "";
+    if(type==="player"){
+        const name = document.getElementById("cpName").value.trim();
+        const role = document.getElementById("cpRole").value;
+        const survPos = document.getElementById("cpSurvPos").value;
+        const grade = document.getElementById("cpGrade").value;
+        const score = Number(document.getElementById("cpScore").value);
+        const teamTag = document.getElementById("cpTeamTag").value.trim()||"自建";
+        if(!name){
+            document.getElementById("cpTip").innerText="请输入选手名字";return;
+        }
+        const rule = GRADE_RULE[grade];
+        if(score<rule.min || score>rule.max){
+            document.getElementById("cpTip").innerText=`${grade}等级分数区间：${rule.min}-${rule.max}，请调整评分`;
+            return;
+        }
+        const newP = {
+            id:"p_"+Math.random().toString(36).slice(2),
+            name:name,
+            role:role,
+            survPos:role==="survivor"?survPos:null,
+            score:score,
+            grade:grade,
+            price:calcPlayerPrice(score),
+            teamTag:teamTag,
+            belongTeamId:null,
+            signPrice:0
+        };
+        playerDatabase.push(newP);
+        document.getElementById("cpTip").innerText=`✅ 创建选手成功：${name}`;
+    }else{
+        const cname = document.getElementById("ccName").value.trim();
+        const cgrade = document.getElementById("ccGrade").value;
+        const cscore = Number(document.getElementById("ccScore").value);
+        const ctag = document.getElementById("ccTeamTag").value.trim()||"自建";
+        if(!cname){
+            document.getElementById("cpTip").innerText="请输入教练名字";return;
+        }
+        const rule = GRADE_RULE[cgrade];
+        if(cscore<rule.min || cscore>rule.max){
+            document.getElementById("cpTip").innerText=`${cgrade}等级分数区间：${rule.min}-${rule.max}，请调整评分`;
+            return;
+        }
+        const newC = {
+            id:"c_"+Math.random().toString(36).slice(2),
+            name:cname,
+            score:cscore,
+            grade:cgrade,
+            price:calcCoachPrice(cscore),
+            teamTag:ctag,
+            belongTeamId:null,
+            signPrice:0
+        };
+        coachDatabase.push(newC);
+        document.getElementById("cpTip").innerText=`✅ 创建教练成功：${cname}`;
+    }
+    saveStorage();
+    renderAll();
+}
+
+function showPlayerDetail(pid){
+    const p = playerDatabase.find(x=>x.id===pid);
+    if(!p) return;
+    const posMap = {rescue:"救人位",ob:"OB位",kiting:"牵制位",support:"辅助位"};
+    const roleText = p.role==="hunter"?"监管者":"求生者";
+    const belongText = p.belongTeamId ? "已签约战队":"自由可签约";
+    let posHtml = "";
+    if(p.role === "survivor"){
+        const posText = p.survPos ? posMap[p.survPos]:"无";
+        posHtml = `<div>求生位置：${posText}</div>`;
+    }
+    openModal("选手详情 · "+p.name,`
+    <div><span class="tag tag-${p.grade}">${p.grade}</span></div>
+    <div>战队前缀：${p.teamTag}</div>
+    <div>角色：${roleText}</div>
+    ${posHtml}
+    <div>评分：${p.score}</div>
+    <div>签约价格：${p.price}</div>
+    <div>状态：${belongText}</div>
+    `);
+}
+
+function showCoachDetail(cid){
+    const c = coachDatabase.find(x=>x.id===cid);
+    if(!c) return;
+    const belongText = c.belongTeamId ? "已签约战队":"自由可签约";
+    openModal("教练详情 · "+c.name,`
+    <div><span class="tag tag-${c.grade}">${c.grade}</span></div>
+    <div>战队前缀：${c.teamTag}</div>
+    <div>教练评分：${c.score}</div>
+    <div>签约价格：${c.price}</div>
+    <div>状态：${belongText}</div>
+    `);
+}
+
+function signPlayer(pid){
+    if(!gameData.myTeam){openModal("提示","请先创建你的战队");return;}
+    const p = playerDatabase.find(x=>x.id===pid);
+    if(!p) return;
+    if(p.belongTeamId){
+        openModal("无法签约","该选手已经属于其他战队！");
+        return;
+    }
+    if(gameData.gold < p.price){
+        openModal("资金不足",`当前资金：${gameData.gold}，选手签约费用：${p.price}`);
+        return;
+    }
+    if(!confirm(`确认签约【${p.teamTag}｜${p.name}】\n签约费用：${p.price}\n签约后剩余资金：${gameData.gold-p.price}`)) return;
+    gameData.gold -= p.price;
+    for(let t of gameData.aiTeams){
+        let idx = t.players.indexOf(p.id);
+        if(idx>-1){
+            t.players.splice(idx,1);
+            break;
+        }
+    }
+    p.belongTeamId = gameData.myTeam.teamId;
+    p.signPrice = p.price;
+    gameData.myTeam.players.push(p.id);
+    saveStorage();
+    renderAll();
+    openModal("签约成功",`${p.name}加入你的战队！剩余资金：${gameData.gold}`);
+}
+
+function signCoach(cid){
+    if(!gameData.myTeam){openModal("提示","请先创建你的战队");return;}
+    const c = coachDatabase.find(x=>x.id===cid);
+    if(!c) return;
+    if(c.belongTeamId){
+        openModal("无法签约","该教练已经归属其他战队");
+        return;
+    }
+    if(gameData.gold < c.price){
+        openModal("资金不足",`当前资金：${gameData.gold}，教练签约费用：${c.price}`);
+        return;
+    }
+    if(!confirm(`确认签约教练【${c.teamTag}｜${c.name}】\n签约费用：${c.price}\n剩余资金：${gameData.gold-c.price}`)) return;
+    gameData.gold -= c.price;
+    for(let t of gameData.aiTeams){
+        let idx = t.coachIds.indexOf(c.id);
+        if(idx>-1){
+            t.coachIds.splice(idx,1);
+            break;
+        }
+    }
+    c.belongTeamId = gameData.myTeam.teamId;
+    c.signPrice = c.price;
+    gameData.myTeam.coachIds.push(c.id);
+    saveStorage();
+    renderAll();
+    openModal("教练签约成功",`${c.name}加入你的战队，剩余资金：${gameData.gold}`);
+}
+
+// 解约选手 返还60%
+function releasePlayer(pid){
+    if(!gameData.myTeam) return;
+    const p = playerDatabase.find(x=>x.id===pid);
+    if(!p || p.belongTeamId !== gameData.myTeam.teamId) return;
+    const refund = Math.floor(p.signPrice * 0.6);
+    if(!confirm(`确认解约【${p.name}】？\n将返还${refund}资金（原签约费${p.signPrice}的60%）`)) return;
+    gameData.gold += refund;
+    p.belongTeamId = null;
+    p.signPrice = 0;
+    const idx = gameData.myTeam.players.indexOf(pid);
+    if(idx>-1) gameData.myTeam.players.splice(idx,1);
+    saveStorage();
+    renderAll();
+    openModal("解约完成",`${p.name}已离队，返还资金${refund}`);
+}
+
+// 解约教练 返还60%
+function releaseCoach(cid){
+    if(!gameData.myTeam) return;
+    const c = coachDatabase.find(x=>x.id===cid);
+    if(!c || c.belongTeamId !== gameData.myTeam.teamId) return;
+    const refund = Math.floor(c.signPrice * 0.6);
+    if(!confirm(`确认解约【${c.name}】？\n将返还${refund}资金（原签约费${c.signPrice}的60%）`)) return;
+    gameData.gold += refund;
+    c.belongTeamId = null;
+    c.signPrice = 0;
+    const idx = gameData.myTeam.coachIds.indexOf(cid);
+    if(idx>-1) gameData.myTeam.coachIds.splice(idx,1);
+    saveStorage();
+    renderAll();
+    openModal("解约完成",`${c.name}已离队，返还资金${refund}`);
+}
+
+function renderPlayerMarket(){
+    const box = document.getElementById("playerMarketList");
+    let list = [...playerDatabase];
+    const sortType = document.getElementById("sortPlayer").value;
+    const filterRole = document.getElementById("filterRole").value;
+    const filterSurvPos = document.getElementById("filterSurvPos").value;
+    const filterGrade = document.getElementById("filterGrade").value;
+
+    if(filterAvailableOnly){
+        list = list.filter(x=>!x.belongTeamId);
+    }
+    if(filterRole!=="all") list = list.filter(x=>x.role===filterRole);
+    if(filterRole==="survivor" && filterSurvPos!=="all") list = list.filter(x=>x.survPos===filterSurvPos);
+    if(filterGrade!=="all") list = list.filter(x=>x.grade===filterGrade);
+
+    switch(sortType){
+        case "score-asc": list.sort((a,b)=>a.score - b.score); break;
+        case "score-desc": list.sort((a,b)=>b.score - a.score); break;
+        case "price-asc": list.sort((a,b)=>a.price - b.price); break;
+        case "price-desc": list.sort((a,b)=>b.price - a.price); break;
+    }
+
+    const posMap = {rescue:"救人位",ob:"OB位",kiting:"牵制位",support:"辅助位"};
+    let html = "";
+    list.forEach(p=>{
+        const roleText = p.role==="hunter"?"监管者":"求生者";
+        const posText = p.survPos ? posMap[p.survPos]:"‑";
+        const belongText = p.belongTeamId?"【已签约】":"可签约";
+        html += `<div class="card">
+        <span class="tag tag-${p.grade}">${p.grade}</span>
+        <span class="click-player" onclick="showPlayerDetail('${p.id}')">${p.name}</span>｜${roleText} ${posText}｜评分:${p.score}｜价格:${p.price}
+        <div class="row">
+        <span class="${p.belongTeamId?'warn':''}">${belongText}</span>
+        ${!p.belongTeamId?`<button class="btn btn-success" onclick="signPlayer('${p.id}')">签约</button>`:""}
+        </div>
+        </div>`;
+    });
+    box.innerHTML = html||"<div class='info-text'>暂无匹配选手</div>";
+}
+
+function renderCoachLib(){
+    const box = document.getElementById("coachListBox");
+    let list = [...coachDatabase];
+    const sortType = document.getElementById("sortCoach").value;
+    switch(sortType){
+        case "score-asc": list.sort((a,b)=>a.score - b.score); break;
+        case "score-desc": list.sort((a,b)=>b.score - a.score); break;
+        case "price-asc": list.sort((a,b)=>a.price - b.price); break;
+        case "price-desc": list.sort((a,b)=>b.price - a.price); break;
+    }
+    let html = "";
+    list.forEach(c=>{
+        const belongText = c.belongTeamId?"【已签约】":"可签约";
+        html += `<div class="card">
+        <span class="tag tag-${c.grade}">${c.grade}</span>
+        ${c.teamTag}｜<span class="click-player" onclick="showCoachDetail('${c.id}')">${c.name}</span>｜评分:${c.score}｜价格:${c.price}
+        <div class="row">
+        <span class="${c.belongTeamId?'warn':''}">${belongText}</span>
+        ${!c.belongTeamId?`<button class="btn btn-success" onclick="signCoach('${c.id}')">签约</button>`:""}
+        </div>
+        </div>`;
+    });
+    box.innerHTML = html||"<div class='info-text'>暂无教练</div>";
+}
+
+function renderMyRoster(){
+    const box = document.getElementById("myRoster");
+    if(!gameData.myTeam){
+        box.innerHTML="<div class='info-text'>请先创建战队</div>";
+        return;
+    }
+    const my = gameData.myTeam;
+    let html = "";
+
+    html += `<div><b>教练：共${my.coachIds.length}人</b></div>`;
+    if(my.coachIds.length===0){
+        html += `<div class="info-text">暂无签约教练</div>`;
+    }else{
+        my.coachIds.forEach(cid=>{
+            const c = coachDatabase.find(x=>x.id===cid);
+            if(!c) return;
+            html += `<div class="roster-item">
+            <span><span class="tag tag-${c.grade}">${c.grade}</span> <span class="click-player" onclick="showCoachDetail('${c.id}')">${c.name}</span> ${c.score}分</span>
+            <button class="btn btn-danger" onclick="releaseCoach('${c.id}')">解约</button>
+            </div>`;
+        });
+    }
+
+    html += `<div style="margin-top:8px;"><b>选手：共${my.players.length}人</b></div>`;
+    if(my.players.length===0){
+        html += `<div class="info-text">暂无签约选手</div>`;
+    }else{
+        my.players.forEach(pid=>{
+            const p = playerDatabase.find(x=>x.id===pid);
+            if(!p) return;
+            const rt = p.role==="hunter"?"监管":"求生";
+            html += `<div class="roster-item">
+            <span><span class="tag tag-${p.grade}">${p.grade}</span> <span class="click-player" onclick="showPlayerDetail('${p.id}')">${p.name}</span> [${rt}] ${p.score}分</span>
+            <button class="btn btn-danger" onclick="releasePlayer('${p.id}')">解约</button>
+            </div>`;
+        });
+    }
+
+    const valid = checkTeamValid(my);
+    html += `<div style="margin-top:8px;" class="${valid?'':'warn'}">${valid?"✅ 阵容满足参赛条件":"⚠ 需1名监管者+4名求生者才可参赛"}</div>`;
+
+    box.innerHTML = html;
+}
+
+function renderAllTeamDetail(){
+    const box = document.getElementById("allTeamDetailBox");
+    const posMap = {rescue:"救人位",ob:"OB位",kiting:"牵制位",support:"辅助位"};
+    let html = "";
+    const allTeams = getAllMatchableTeams();
+    allTeams.forEach(t=>{
+        html += `<div class="card"><h4>${t.name}</h4>`;
+        html += `<div>教练（${t.coachIds.length}人）：</div>`;
+        t.coachIds.forEach(cid=>{
+            const c = coachDatabase.find(x=>x.id===cid);
+            if(c && c.belongTeamId === t.teamId){
+                html += `<div> <span class="tag tag-${c.grade}">${c.grade}</span> <span class="click-player" onclick="showCoachDetail('${c.id}')">${c.name}</span> ${c.score}分</div>`;
+            }
+        });
+        if(t.coachIds.length===0) html += `<div> 无</div>`;
+
+        html += `<div>选手（${t.players.length}人）：</div>`;
+        t.players.forEach(pid=>{
+            const p = playerDatabase.find(x=>x.id===pid);
+            if(!p) return;
+            if(p.belongTeamId !== t.teamId) return;
+            const rt = p.role==="hunter"?"监管者":"求生者";
+            const pos = p.survPos?posMap[p.survPos]:"‑";
+            html += `<div> <span class="tag tag-${p.grade}">${p.grade}</span> <span class="click-player" onclick="showPlayerDetail('${p.id}')">${p.name}</span>｜${rt} ${pos}｜${p.score}分</div>`;
+        });
+        html += `<div>战绩：胜${t.win} 负${t.lose} 净胜局${t.netRound}</div>`;
+        html += "</div>";
+    });
+    box.innerHTML = html;
+}
+
+function getTeamPower(teamObj){
+    let sum = 0;
+    teamObj.players.forEach(pid=>{
+        const p = playerDatabase.find(x=>x.id===pid);
+        if(p && p.belongTeamId === teamObj.teamId) sum += p.score;
+    });
+    teamObj.coachIds.forEach(cid=>{
+        const c = coachDatabase.find(x=>x.id===cid);
+        if(c && c.belongTeamId === teamObj.teamId) sum += c.score * 0.35;
+    });
+    return sum;
+}
+
+// ========== 三局两胜制 ==========
+function generateRoundScore(powerDiff){
+    const scorePool = [
+        {score:[10,0], type:"t1_heavy", baseWeight:1},
+        {score:[8,1],  type:"t1_mid",   baseWeight:2},
+        {score:[6,2],  type:"t1_light", baseWeight:3},
+        {score:[5,3],  type:"t1_near",  baseWeight:6},
+        {score:[4,4],  type:"draw",     baseWeight:6},
+        {score:[3,5],  type:"t2_near",  baseWeight:6},
+        {score:[2,6],  type:"t2_light", baseWeight:3},
+        {score:[1,8],  type:"t2_mid",   baseWeight:2},
+        {score:[0,10], type:"t2_heavy", baseWeight:1}
+    ];
+
+    const factor = Math.min(Math.max(powerDiff / 25, -1), 1);
+    let totalWeight = 0;
+
+    const weightedPool = scorePool.map(item=>{
+        let w = item.baseWeight;
+        if(factor > 0){
+            if(item.type.startsWith("t1")) w *= (1 + factor);
+            if(item.type.startsWith("t2")) w *= (1 - factor);
+        }else if(factor < 0){
+            if(item.type.startsWith("t2")) w *= (1 - factor);
+            if(item.type.startsWith("t1")) w *= (1 + factor);
+        }
+        w = Math.max(w, 0.1);
+        totalWeight += w;
+        return {...item, weight:w};
+    });
+
+    let rand = Math.random() * totalWeight;
+    for(const item of weightedPool){
+        rand -= item.weight;
+        if(rand <= 0) return item.score;
+    }
+    return [4,4];
+}
+
+function runMatch(t1, t2){
+    const pow1 = getTeamPower(t1);
+    const pow2 = getTeamPower(t2);
+    const powerDiff = pow1 - pow2;
+
+    let t1Wins = 0;
+    let t2Wins = 0;
+    const roundScores = [];
+
+    // 三局两胜：先到2胜直接结束
+    for(let i=0; i<3; i++){
+        const score = generateRoundScore(powerDiff);
+        roundScores.push(score);
+        if(score[0] > score[1]) t1Wins++;
+        else if(score[0] < score[1]) t2Wins++;
+        if(t1Wins === 2 || t2Wins === 2) break;
+    }
+
+    // 打平则加赛
+    while(t1Wins === t2Wins){
+        const score = generateRoundScore(powerDiff);
+        roundScores.push(score);
+        if(score[0] > score[1]) t1Wins++;
+        else if(score[0] < score[1]) t2Wins++;
+    }
+
+    let win, lose;
+    if(t1Wins > t2Wins){
+        win = t1; lose = t2;
+    }else{
+        win = t2; lose = t1;
+    }
+
+    win.win += 1;
+    lose.lose += 1;
+    const netDiff = Math.abs(t1Wins - t2Wins);
+    win.netRound += netDiff;
+    lose.netRound -= netDiff;
+
+    const roundText = roundScores.map((s,i)=>`第${i+1}局${s[0]}:${s[1]}`).join("，");
+    const resultText = `${t1.name} VS ${t2.name} | ${roundText} | 总胜场${t1Wins}:${t2Wins}，${win.name}获胜`;
+
+    return {win, lose, diff:netDiff, t1, t2, resultText};
+}
+// =============================
+
+// 更新日期周数 + 每日结束提醒
+function updateDayWeek(){
+    const s = gameData.season;
+    s.matchInDay +=1;
+    if(s.matchInDay >=4){
+        const oldDay = s.day;
+        const oldWeek = s.week;
+        s.matchInDay = 0;
+        s.day +=1;
+
+        // 当日比赛结束，检查玩家战队比赛并提醒
+        if(gameData.myTeam){
+            const todayLogs = gameData.matchLog.filter(log=>{
+                return log.isPlayer && log.text.includes(`第${oldWeek}周‑第${oldDay}比赛日`);
+            });
+            if(todayLogs.length > 0){
+                const teams = getAllMatchableTeams();
+                teams.sort((a,b)=>{
+                    if(b.win!==a.win) return b.win - a.win;
+                    return b.netRound - a.netRound;
+                });
+                const myRank = teams.findIndex(t=>t.teamId === gameData.myTeam.teamId) + 1;
+                const logText = todayLogs.map(l=>l.text).join('\n');
+                setTimeout(()=>{
+                    openModal(`第${oldDay}比赛日结束`,
+                        `今日你的战队比赛结果：\n${logText}\n\n当前战队排名：第${myRank}名`
+                    );
+                }, 100);
+            }
+        }
+
+        if(s.day %3 ===1){
+            s.week +=1;
+        }
+    }
+}
+
+// 单场随机比赛：自动匹配可对战战队，不提示
+function runOneRandomMatch(){
+    const teams = getAllMatchableTeams();
+    if(teams.length<2){
+        openModal("提示","战队数量不足");
+        return;
+    }
+    if(gameData.myTeam && !checkTeamValid(gameData.myTeam)){
+        openModal("无法参赛","你的阵容不满足参赛条件！\n需要至少1名监管者 + 4名求生者。");
+        return;
+    }
+
+    let t1, t2;
+    let attempts = 0;
+    const maxAttempts = 200;
+    do{
+        let idx1 = Math.floor(Math.random()*teams.length);
+        let idx2 = Math.floor(Math.random()*teams.length);
+        while(idx2===idx1) idx2 = Math.floor(Math.random()*teams.length);
+        t1 = teams[idx1];
+        t2 = teams[idx2];
+        attempts++;
+        if(attempts > maxAttempts){
+            openModal("提示","今日所有战队均已完成比赛");
+            return;
+        }
+    }while((gameData.season.teamDailyCount[t1.teamId]||0)>=1 || (gameData.season.teamDailyCount[t2.teamId]||0)>=1);
+
+    gameData.season.teamDailyCount[t1.teamId] = (gameData.season.teamDailyCount[t1.teamId]||0)+1;
+    gameData.season.teamDailyCount[t2.teamId] = (gameData.season.teamDailyCount[t2.teamId]||0)+1;
+
+    const res = runMatch(t1,t2);
+    updateDayWeek();
+    const isPlayerMatch = (gameData.myTeam && (t1.teamId===gameData.myTeam.teamId || t2.teamId===gameData.myTeam.teamId));
+    const logItem = {
+        text: `【第${gameData.season.week}周‑第${gameData.season.day}比赛日】${res.resultText}`,
+        isPlayer: isPlayerMatch
+    };
+    gameData.matchLog.push(logItem);
+    saveStorage();
+    renderAll();
+    openModal("对局结束", res.resultText);
+}
+
+function clearAllMatchLog(){
+    if(!confirm("确定清除全部战报？")) return;
+    gameData.matchLog = [];
+    saveStorage();
+    renderAll();
+}
+
+// 完整常规赛：固定21周
+function simFullRegular(){
+    if(!confirm("确认模拟完整常规赛？现有战绩将被覆盖。")) return;
+    if(gameData.myTeam && !checkTeamValid(gameData.myTeam)){
+        openModal("无法参赛","你的阵容不满足参赛条件！\n需要至少1名监管者 + 4名求生者。");
+        return;
+    }
+    const teams = getAllMatchableTeams();
+    teams.forEach(t=>{
+        t.win = 0; t.lose = 0; t.netRound = 0;
+    });
+    gameData.matchLog = [];
+    gameData.season = {day:1,week:1,matchInDay:0,teamDailyCount:{}};
+
+    const schedule = [];
+    for(let i = 0; i < teams.length; i++){
+        for(let j = i + 1; j < teams.length; j++){
+            schedule.push({t1:teams[i],t2:teams[j]});
+            schedule.push({t1:teams[j],t2:teams[i]});
+        }
+    }
+    for(let i = schedule.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [schedule[i], schedule[j]] = [schedule[j], schedule[i]];
+    }
+
+    for(const match of schedule){
+        const t1 = match.t1;
+        const t2 = match.t2;
+        while((gameData.season.teamDailyCount[t1.teamId]||0)>=1 || (gameData.season.teamDailyCount[t2.teamId]||0)>=1){
+            gameData.season.matchInDay = 0;
+            gameData.season.day +=1;
+            gameData.season.teamDailyCount = {};
+            if(gameData.season.day %3 ===1){
+                gameData.season.week +=1;
+            }
+        }
+        gameData.season.teamDailyCount[t1.teamId] = (gameData.season.teamDailyCount[t1.teamId]||0)+1;
+        gameData.season.teamDailyCount[t2.teamId] = (gameData.season.teamDailyCount[t2.teamId]||0)+1;
+
+        const res = runMatch(t1,t2);
+        updateDayWeek();
+        const isPlayerMatch = (gameData.myTeam && (t1.teamId===gameData.myTeam.teamId || t2.teamId===gameData.myTeam.teamId));
+        gameData.matchLog.push({
+            text: `【第${gameData.season.week}周‑第${gameData.season.day}比赛日】${res.resultText}`,
+            isPlayer: isPlayerMatch
+        });
+    }
+
+    // 固定赛季为21周
+    gameData.season.week = 21;
+    gameData.season.day = 63;
+    gameData.season.matchInDay = 0;
+
+    saveStorage();
+    renderAll();
+    openModal("模拟完成","21周完整常规赛已模拟完毕，积分榜和战报已更新。");
+}
+
+function renderRank(){
+    const box = document.getElementById("rankTableBox");
+    const teams = getAllMatchableTeams();
+    teams.sort((a,b)=>{
+        if(b.win!==a.win) return b.win - a.win;
+        return b.netRound - a.netRound;
+    });
+
+    let html = `<table><tr><th>排名</th><th>战队</th><th>胜</th><th>负</th><th>净胜局</th></tr>`;
+    teams.forEach((t,i)=>{
+        html += `<tr><td>${i+1}</td><td>${t.name}</td><td>${t.win}</td><td>${t.lose}</td><td>${t.netRound}</td></tr>`;
+    });
+    html += "</table>";
+    box.innerHTML = html;
+}
+
+function renderEventCenter(){
+    document.getElementById("seasonStatusText").innerHTML = `当前赛季：2026 IVL夏季赛｜共21周`;
+    document.getElementById("dayWeekInfo").innerHTML = `第${gameData.season.week}周｜第${gameData.season.day}比赛日｜今日第${gameData.season.matchInDay}场`;
+
+    const logBox = document.getElementById("matchLogBox");
+    if(gameData.matchLog.length===0){
+        logBox.innerHTML = "<div class='info-text'>暂无对战战报</div>";
+        return;
+    }
+    let html = "";
+    gameData.matchLog.forEach(log=>{
+        html += `<div class="card ${log.isPlayer?'player-match-log':'ai-match-log'}">${log.text}</div>`;
+    });
+    logBox.innerHTML = html;
+}
+
+function renderAll(){
+    renderMyRoster();
+    renderPlayerMarket();
+    renderCoachLib();
+    renderAllTeamDetail();
+    renderEventCenter();
+    renderRank();
+
+    if(gameData.myTeam){
+        document.getElementById("myTeamName").innerText = gameData.myTeam.name;
+    }else{
+        document.getElementById("myTeamName").innerText = "未创建";
+    }
+    document.getElementById("myGold").innerText = gameData.gold;
+}
+
+window.onload = function(){
+    loadStorage();
+    if(!playerDatabase.length){
+        initBasePlayerDB();
+    }
+    if(!gameData.aiTeams.length){
+        initAITeams();
+    }
+    renderAll();
+};
+</script>
+</body>
+</html>
